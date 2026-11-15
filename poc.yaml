@@ -1,0 +1,30 @@
+
+project_name: "AI Nutrition Coach"
+type: software
+runtime: python
+
+poc_claim: "The FastAPI backend can search USDA FoodData Central, retrieve food nutrition data, calculate nutrients for selected portions, and provide food data to the Expo frontend."
+
+commands:
+  setup: "python3 -m pip install -r requirements.txt"
+  build: ""
+  test: "python3 -m pytest -v"
+  simulate: ""
+  run: "python3 -m uvicorn src.main:app --host 0.0.0.0 --port 8000"
+  run_mode: service
+  smoke_check: "curl -fsS http://localhost:8000/health"
+
+hardware:
+  required: false
+  components: []
+
+external_services:
+  - name: "USDA FoodData Central"
+    mock: ""
+
+env_vars:
+  - FDC_API_KEY
+
+demo:
+  video: ""
+  evidence: []
