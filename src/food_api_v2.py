@@ -22,12 +22,18 @@ NUTRIENT_IDS = {
     2000: ("total_sugars_g", "g"),
     1235: ("added_sugars_g", "g"),
     1258: ("saturated_fat_g", "g"),
+    1292: ("monounsaturated_fat_g", "g"),
+    1293: ("polyunsaturated_fat_g", "g"),
     1008: ("calories", "kcal"),
     2047: ("calories", "kcal"),
     2048: ("calories", "kcal"),
 }
-ENERGY_PRIORITY = {2047: 3, 1008: 2, 2048: 1}
 
+ENERGY_PRIORITY = {
+    2047: 3,
+    1008: 2,
+    2048: 1,
+}
 
 def api_request(path, payload=None):
     url = f"{BASE_URL}{path}?{urllib.parse.urlencode({'api_key': API_KEY})}"
@@ -49,7 +55,11 @@ def api_request(path, payload=None):
 def search_foods(query):
     result = api_request("/foods/search", {"query": query, "pageSize": 12, "dataType": DATA_TYPES})
     return result.get("foods", [])
+def get_fndds_food_code(food):
+    if food.get("dataType") != "Survey (FNDDS)":
+        return None
 
+    return food.get("foodCode")
 
 def food_details(fdc_id):
     return api_request(f"/food/{int(fdc_id)}")

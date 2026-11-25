@@ -5,7 +5,10 @@ from .food_api_v2 import (
     search_foods,
     food_details,
     nutrient_values_per_100g,
+    get_fndds_food_code,
 )
+from .fped_lookup import calculate_fped_portion
+from src.hei_scoring import calculate_hei_2020
 
 app = FastAPI(title="AI Nutrition Coach API")
 app.add_middleware(
@@ -150,3 +153,143 @@ def delete_meal(meal_id: int):
 
     return {"message": "Meal deleted successfully"}
 
+@app.get("/fped/{food_code}/portion")
+def get_fped_portion(food_code: int, grams: float = 100):
+    if grams <= 0:
+        raise HTTPException(
+            status_code=400,
+            detail="Grams must be greater than zero"
+        )
+
+    result = calculate_fped_portion(food_code, grams)
+
+    if result is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Food code not found in FPED"
+        )
+
+    return result
+
+@app.get("/foods/{fdc_id}/analysis")
+def analyze_food(fdc_id: int, grams: float = 100):
+    if grams <= 0:
+        raise HTTPException(
+            status_code=400,
+            detail="Grams must be greater than zero"
+        )
+
+    try:
+        food = food_details(fdc_id)
+        nutrients = nutrient_values_per_100g(food)
+        factor = grams / 100
+
+        scaled_nutrients = {
+            key: value * factor if value is not None else None
+            for key, value in nutrients.items()
+        }
+
+        food_code = get_fndds_food_code(food)
+        fped = (
+            calculate_fped_portion(food_code, grams)
+            if food_code is not None
+            else None
+        )
+
+        return {
+            "fdcId": fdc_id,
+            "foodName": food.get("description"),
+            "dataType": food.get("dataType"),
+            "grams": grams,
+            "nutrients": scaled_nutrients,
+            "fnddsFoodCode": food_code,
+            "fped": fped,
+            "fpedMatched": fped is not None,
+            "fpedRelease": "2021-2023",
+            "heiInputStatus": (
+                "pending_release_verification"
+                if fped is not None
+                else "missing_fped_match"
+            ),
+        }
+
+    except (ValueError, RuntimeError) as error:
+        raise HTTPException(status_code=502, detail=str(error))
+
+@app.post("/hei/score")
+def score_hei(data: dict):
+    try:
+        return calculate_hei_2020(data)
+    except ValueError as error:
+        raise HTTPException(
+            status_code=400,
+            detail=str(error)
+        )
+@app.post("/hei/analyze-meal")
+def analyze_meal_for_hei(items: list[MealInput]):
+    if not items:
+        raise HTTPException(
+            status_code=400,
+            detail="At least one food is required"
+        )
+
+    results = []
+    missing_fped = []
+
+    for item in items:
+        try:
+            food = food_details(item.fdcId)
+            nutrients = nutrient_values_per_100g(food)
+
+            factor = item.grams / 100
+
+            scaled_nutrients = {
+                key: round(value * factor, 2)
+                if isinstance(value, (int, float))
+                else None
+                for key, value in nutrients.items()
+            }
+
+            food_code = get_fndds_food_code(food)
+
+            fped = (
+                calculate_fped_portion(
+                    food_code,
+                    item.grams
+                )
+                if food_code is not None
+                else None
+            )
+
+            if fped is None:
+                missing_fped.append(item.fdcId)
+
+            results.append({
+                "fdcId": item.fdcId,
+                "foodName": food.get("description"),
+                "grams": item.grams,
+                "nutrients": scaled_nutrients,
+                "fnddsFoodCode": food_code,
+                "fped": fped,
+                "fpedMatched": fped is not None,
+            })
+
+        except (ValueError, RuntimeError) as error:
+            raise HTTPException(
+                status_code=502,
+                detail=str(error)
+            )
+
+    return {
+        "foods": results,
+        "foodCount": len(results),
+        "fpedMatched": len(missing_fped) == 0,
+        "missingFpedIds": missing_fped,
+        "heiScore": None,
+        "status": "requires_verified_hei_inputs",
+        "message": (
+            "Food analysis completed. Verify FPED release "
+            "compatibility, required nutrient values, and "
+            "HEI food-group allocation before scoring."
+        ),
+    }
