@@ -5,10 +5,10 @@
 - Name (GitHub: @username):
 | Name | GitHub | Email |
 |------|--------|-------|
-| Armita Asghari | [@username](https://github.com/username) | Armita.asghariardebili@sjsu.edu |
+| Armita Asghari | Armitaasghariardebili-stack | Armita.asghariardebili@sjsu.edu |
 | Xuan Phuong Nguyen | xuanphuong2901 | xuanphuong.nguyen@sjsu.edu |
-| Darren Vu | [@username](https://github.com/username) | darren.vu@sjsu.edu |
-| Michael Kim | [@username](https://github.com/username) | Michael.n.kim@sjsu.edu|
+| Darren Vu | darrenvu2 | darren.vu@sjsu.edu |
+| Michael Kim | michaelnathykim | Michael.n.kim@sjsu.edu|
 
 
 ## Project Description
